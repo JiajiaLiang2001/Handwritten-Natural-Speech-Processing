@@ -1,6 +1,8 @@
+import os
 import struct
 
 import numpy as np
+from dataset_dataloader.dataset_dataloader import MyDataset
 
 
 def load_labels(file):
@@ -120,48 +122,6 @@ class Softmax(Module):
     def backward(self, G):
         return G
 
-
-class Relu(Module):
-    def forward(self, x):
-        self.negative = x < 0
-        x[self.negative] = 0
-        return x
-
-    def backward(self, G):
-        G[self.negative] = 0
-        return G
-
-
-class PRelu(Module):
-    def __init__(self, p=0.25):
-        super(PRelu, self).__init__()
-        self.p = p
-
-    def forward(self, x):
-        self.negative = x < 0
-        x[self.negative] *= self.p
-        return x
-
-    def backward(self, G):
-        G[self.negative] *= self.p
-        return G
-
-
-class Dropout(Module):
-    def __init__(self, rate=0.25):
-        self.rate = rate
-
-    def forward(self, x):
-        r = np.random.rand(*x.shape)
-        self.negative = r < self.rate
-        x[self.negative] = 0
-        return x
-
-    def backward(self, G):
-        G[self.negative] = 0
-        return G
-
-
 class Model(Module):
     def __init__(self, layers):
         self.layers = layers
@@ -241,3 +201,82 @@ class Adam(Optim):
             mt_ = param.m / (1 - self.beta1 ** self.t)
             vt_ = param.v / (1 - self.beta2 ** self.t)
             param.weight = param.weight - self.lr * mt_ / (np.sqrt(vt_) + self.e)
+
+
+np.random.seed(1000)
+
+train_data = load_images(
+    os.path.join("..", "data", "handwritten_digit_recognition", "train-images.idx3-ubyte")) / 255
+train_label = onehot(load_labels(
+    os.path.join("..", "data", "handwritten_digit_recognition", "train-labels.idx1-ubyte")))
+
+validation_data = load_images(
+    os.path.join("..", "data", "handwritten_digit_recognition", "t10k-images.idx3-ubyte")) / 255
+validation_label = load_labels(
+    os.path.join("..", "data", "handwritten_digit_recognition", "t10k-labels.idx1-ubyte"))
+
+epoch = 10
+batch_size = 100
+hidden_size = 256
+
+dataset = MyDataset(train_data, train_label, batch_size=batch_size, shuffle=True)
+
+layers = [
+    Linear(784, hidden_size),
+    Sigmoid(),
+    Linear(hidden_size, 10),
+    Softmax()
+]
+model = Model(layers)
+sgd_opt = SGD(model.parameters(), 0.1)
+optimizer = sgd_opt
+for e in range(epoch):
+    for X, y in dataset:
+        model(X, y)
+        model.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+    accuracy = calculation_accuracy(validation_data, validation_label, model)
+print(f"Accuracy of Gradient Descent:{accuracy:.2f}%")
+
+layers = [
+    Linear(784, hidden_size),
+    Sigmoid(),
+    Linear(hidden_size, 10),
+    Softmax()
+]
+model = Model(layers)
+msgd_opt = MSGD(model.parameters(), 0.1)
+optimizer = msgd_opt
+for e in range(epoch):
+    for X, y in dataset:
+        model(X, y)
+        model.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+    accuracy = calculation_accuracy(validation_data, validation_label, model)
+print(f"Accuracy of Dynamic Gradient Descent:{accuracy:.2f}%")
+
+layers = [
+    Linear(784, hidden_size),
+    Sigmoid(),
+    Linear(hidden_size, 10),
+    Softmax()
+]
+model = Model(layers)
+adam_opt = Adam(model.parameters(), 0.001)
+optimizer = adam_opt
+for e in range(epoch):
+    for X, y in dataset:
+        model(X, y)
+        model.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+    accuracy = calculation_accuracy(validation_data, validation_label, model)
+print(f"Accuracy of Adam Gradient Descent:{accuracy:.2f}%")
+
+'''
+Accuracy of Gradient Descent:90.46%
+Accuracy of Dynamic Gradient Descent:90.20%
+Accuracy of Adam Gradient Descent:94.06%
+'''

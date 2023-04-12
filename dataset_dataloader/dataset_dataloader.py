@@ -3,8 +3,8 @@ import numpy as np
 
 class MyDataset:
     def __init__(self, x, y, batch_size, shuffle):
-        self.x = np.array(x)
-        self.y = np.array(y)
+        self.x = x
+        self.y = y
         self.batch_size = batch_size
         self.shuffle = shuffle
 
@@ -17,9 +17,9 @@ class MyDataset:
 
 class MyDataLoader:
     def __init__(self, dataset):
-        self.cursor = 0
         self.dataset = dataset
-        self.index = np.arange(len(dataset))
+        self.cursor = 0
+        self.index = np.arange(len(self.dataset))
         if self.dataset.shuffle:
             np.random.shuffle(self.index)
 

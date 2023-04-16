@@ -35,9 +35,8 @@ class MyDataset:
         return len(self.text)
 
 
-def get_data():
+def get_data(file_path):
     dict_data = {}
-    file_path = os.path.join("..", "data", "dataset_dataloader", "train.txt")
     with open(file_path, "r", encoding="utf-8") as f:
         for line in f.readlines():
             data = line.strip()
@@ -51,7 +50,8 @@ def get_data():
 
 
 if __name__ == "__main__":
-    text, label = get_data()
+    file_path = os.path.join("..", "data", "dataset_dataloader", "train.txt")
+    text, label = get_data(file_path)
     print(text, label)
     batch_size = 2
     epoch = 10
